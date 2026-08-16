@@ -1,5 +1,7 @@
 # dsh-cloakbrowser
 
+[中文文档](README.zh-CN.md)
+
 `dsh-cloakbrowser` is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets an agent use a locally installed CloakBrowser.
 
 ## CloakBrowser attribution and licensing
@@ -8,11 +10,80 @@ This plugin connects [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) to 
 
 You install CloakBrowser separately through CloakHQ's official flow. This repository only contains the DSH integration and does not include or redistribute the CloakBrowser browser binary. The Python wrapper is MIT-licensed; the browser binary has its own [Binary License](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md).
 
-## Prerequisites
+## Install from GitHub
 
-- DeepSeek Harness and Node.js 22.19 or newer.
-- Python 3.11 or newer.
-- A Python environment containing CloakBrowser and Playwright:
+Requirements: Node.js 22.19 or newer, Python 3.11 or newer, and Git.
+
+### 1. Install DSH and pnpm
+
+```bash
+npm install --global @deepseek-ai/dsh pnpm
+```
+
+### 2. Create a Python environment for CloakBrowser
+
+```bash
+python3 -m venv ~/.dsh/venvs/cloakbrowser
+~/.dsh/venvs/cloakbrowser/bin/python -m pip install 'cloakbrowser>=0.4,<1' playwright
+~/.dsh/venvs/cloakbrowser/bin/python -m cloakbrowser install
+```
+
+### 3. Clone this repository and add the plugin to DSH's web profile
+
+```bash
+git clone https://github.com/SJF-ECNU/dsh-cloakbrowser.git
+cd dsh-cloakbrowser
+dsh plugin --profile web add "$PWD"
+```
+
+You can also install directly from GitHub without a checkout:
+
+```bash
+dsh plugin --profile web add github:SJF-ECNU/dsh-cloakbrowser
+```
+
+### 4. Start DSH
+
+```bash
+export CLOAKBROWSER_DSH_PYTHON="$HOME/.dsh/venvs/cloakbrowser/bin/python"
+dsh web
+```
+
+DSH prints a local URL; open it in a browser. The environment variable must also be present on later launches. Add it to your shell configuration if you want it to persist.
+
+### 5. Verify the plugin
+
+```bash
+dsh --profile web --dump-config | grep -A3 'dsh-cloakbrowser'
+```
+
+The output should contain the `dsh-cloakbrowser` layer and the `cloakbrowser` plugin row.
+
+## Upgrade or remove
+
+To update a checkout installation:
+
+```bash
+cd /path/to/dsh-cloakbrowser
+git pull --ff-only
+dsh plugin --profile web update dsh-cloakbrowser
+```
+
+To remove the plugin:
+
+```bash
+dsh plugin --profile web remove dsh-cloakbrowser
+```
+
+To pin a direct GitHub installation to an exact commit:
+
+```bash
+dsh plugin --profile web add github:SJF-ECNU/dsh-cloakbrowser#COMMIT_SHA
+```
+
+## Local development
+
+For local development, install the Python dependencies in the interpreter you plan to use:
 
 ```bash
 python3 -m pip install 'cloakbrowser>=0.4,<1' playwright
@@ -21,33 +92,6 @@ python3 -m cloakbrowser install
 
 Set `CLOAKBROWSER_DSH_PYTHON` when the required Python interpreter is not `python3`.
 
-## Install
-
-Install the bundle into a DSH profile:
-
-```bash
-dsh plugin --profile web add dsh-cloakbrowser
-dsh --profile web --dump-config
-```
-
-The config output must contain a `# == dsh-cloakbrowser` layer and the `cloakbrowser` plugin row. Start the profile normally after that:
-
-```bash
-dsh --profile web
-```
-
-For a local checkout, use its absolute path:
-
-```bash
-dsh plugin --profile web add /absolute/path/to/dsh-cloakbrowser
-```
-
-Remove it with:
-
-```bash
-dsh plugin --profile web remove dsh-cloakbrowser
-```
-
 ## Tools
 
 - `browser_start`, `browser_close`
@@ -55,7 +99,7 @@ dsh plugin --profile web remove dsh-cloakbrowser
 - `browser_snapshot`, `browser_screenshot`
 - `browser_get_cookies`, `browser_set_cookies`
 
-Sessions are local to one running DSH process. The Python worker is a private child process that imports `cloakbrowser` directly, owns browser contexts, and communicates only through inherited stdio. It opens no network listener and uses no MCP protocol.
+Sessions are local to one running DSH process. The Python worker is a private child process that imports `cloakbrowser` directly, owns browser contexts, and communicates only through inherited stdio.
 
 ## Publish
 
@@ -65,7 +109,7 @@ Before publishing:
 
 ```bash
 npm test
-python3 -m unittest test/test_bridge.py
+python3 test/test_bridge.py
 npm pack --dry-run
 ```
 
@@ -73,12 +117,6 @@ Check that the tarball includes `cordis.patch.yml` and `python/bridge.py`, then 
 
 ```bash
 npm publish --access public
-```
-
-For a Git install, users can pin the exact commit:
-
-```bash
-dsh plugin --profile web add github:OWNER/dsh-cloakbrowser#COMMIT_SHA
 ```
 
 ## Security
