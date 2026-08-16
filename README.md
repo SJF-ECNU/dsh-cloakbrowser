@@ -1,6 +1,6 @@
 # dsh-cloakbrowser
 
-`dsh-cloakbrowser` is a native [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle that gives an agent local CloakBrowser tools. It does not run, call, or require an MCP server.
+`dsh-cloakbrowser` is a [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) plugin that lets an agent use a locally installed CloakBrowser.
 
 ## CloakBrowser attribution and licensing
 
