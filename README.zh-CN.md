@@ -96,8 +96,8 @@ python3 -m cloakbrowser install
 
 - `browser_start`、`browser_close`
 - `browser_open_tab`、`browser_list_tabs`、`browser_activate_tab`、`browser_close_tab`
-- `browser_navigate`、`browser_click`、`browser_type`、`browser_evaluate`
-- `browser_snapshot`、`browser_screenshot`
+- `browser_navigate`、`browser_click`、`browser_click_point`、`browser_type`、`browser_evaluate`
+- `browser_snapshot`、`browser_screenshot`、`browser_understand`
 - `browser_get_cookies`、`browser_set_cookies`
 
 会话仅存在于一个运行中的 DSH 进程内。Python worker 是私有子进程：它直接导入 `cloakbrowser`、持有浏览器上下文，并通过继承的标准输入输出与插件通信。
@@ -114,9 +114,17 @@ python3 -m cloakbrowser install
 
 启动会话时设置 `humanize: true`，并可选传 `human_preset: "careful"` 或原生 `human_config`。`browser_click` 和 `browser_type` 也接受单次操作的 `human_config` 覆盖；未以 `humanize: true` 启动的会话会明确拒绝该覆盖。
 
+### 视觉理解
+
+在 DSH 中打开 **设置 → 插件 → 插件配置 → 视觉理解模型**。填写 OpenAI 兼容 API 的 Base URL（包含版本路径）、支持图片输入的模型名称，选择 **Chat Completions** 或 **Responses**，再填写 API Key。Base URL、模型和 API 形式作为普通 DSH 设置保存；API Key 通过 DSH 的只写凭据存储保存，之后不会再次显示。
+
+`browser_understand` 是显式工具：只有智能体判断确实需要视觉定位时才调用。它会把所选标签页的当前视口截图发送给你配置的端点，返回摘要和 CSS 视口坐标。用这些坐标调用 `browser_click_point`；普通 DOM 操作仍应优先使用选择器。该工具不会解答 CAPTCHA 或绕过人机验证，只会报告需要用户操作。
+
 ## 安全提示
 
 浏览器工具可以访问目标网站的登录状态、Cookie，以及传给 CloakBrowser 的本地 profile。请只安装可信插件，在批准浏览器操作前审查请求；除非操作确有需要，不要把凭据放进工具参数。
+
+视觉理解只会在显式调用 `browser_understand` 时，向用户配置的第三方端点发送截图。若页面包含敏感信息，请先确认这种披露是预期的。
 
 ## 已知限制
 

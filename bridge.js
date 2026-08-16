@@ -8,8 +8,16 @@ export class CloakBrowserBridge {
   #nextId = 0
   #pending = new Map()
 
+  constructor({ vision } = {}) {
+    this.vision = vision
+  }
+
   async call(operation, arguments_, signal) {
     if (signal.aborted) throw signal.reason
+    if (operation === 'browser_understand') {
+      if (!this.vision) throw new Error('Visual understanding is not configured')
+      arguments_ = { ...arguments_, vision: await this.vision() }
+    }
     this.#start()
     const id = String(++this.#nextId)
     return new Promise((resolve, reject) => {

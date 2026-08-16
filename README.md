@@ -96,8 +96,8 @@ Set `CLOAKBROWSER_DSH_PYTHON` when the required Python interpreter is not `pytho
 
 - `browser_start`, `browser_close`
 - `browser_open_tab`, `browser_list_tabs`, `browser_activate_tab`, `browser_close_tab`
-- `browser_navigate`, `browser_click`, `browser_type`, `browser_evaluate`
-- `browser_snapshot`, `browser_screenshot`
+- `browser_navigate`, `browser_click`, `browser_click_point`, `browser_type`, `browser_evaluate`
+- `browser_snapshot`, `browser_screenshot`, `browser_understand`
 - `browser_get_cookies`, `browser_set_cookies`
 
 Sessions are local to one running DSH process. The Python worker is a private child process that imports `cloakbrowser` directly, owns browser contexts, and communicates only through inherited stdio.
@@ -114,9 +114,17 @@ On Linux, pass `virtual_display: { width, height }` to launch a headed browser o
 
 Set `humanize: true` and optionally `human_preset: "careful"` or a native `human_config` when starting a session. `browser_click` and `browser_type` accept `human_config` for an individual native action override; this override is rejected unless the session was started with `humanize: true`.
 
+### Visual understanding
+
+In DSH, open **Settings → Plugins → Plugin configuration → Visual understanding model**. Enter an OpenAI-compatible API Base URL (including its version path), an image-capable model name, choose **Chat Completions** or **Responses**, and enter the API key. The Base URL, model, and API style are normal DSH settings; the API key is stored through DSH's write-only credentials store and is never displayed again.
+
+`browser_understand` is deliberately explicit: the agent calls it only when visual grounding is needed. It sends the selected tab's current viewport screenshot to the endpoint you configured and returns a summary plus CSS viewport coordinates. Use those coordinates with `browser_click_point`; normal DOM actions should continue to use selectors. The tool does not solve CAPTCHA or human-verification challenges: it reports that user action is needed.
+
 ## Security
 
 Browser tools can access the target site's authenticated state, cookies, and any local profile passed to CloakBrowser. Install only a trusted bundle, review requests before approving browser actions, and do not put credentials into tool arguments unless the action requires them.
+
+Visual understanding sends a screenshot to the third-party endpoint configured by the user only for an explicit `browser_understand` call. Do not invoke it on sensitive pages unless that disclosure is intended.
 
 ## Known Limitations
 

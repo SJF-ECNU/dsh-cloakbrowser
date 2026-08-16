@@ -21,6 +21,7 @@ class FakePage:
         self.closed = False
         self.click_calls = []
         self.fill_calls = []
+        self.mouse = types.SimpleNamespace(click=AsyncMock())
 
     async def title(self): return self._title
 
@@ -33,7 +34,12 @@ class FakePage:
     async def fill(self, selector, text, **kwargs):
         self.fill_calls.append((selector, text, kwargs))
 
-    async def evaluate(self, script): return script
+    async def evaluate(self, script, argument=None):
+        if "window.innerWidth" in script:
+            return {"width": 1280, "height": 720, "devicePixelRatio": 1}
+        if "visualTargets" in script:
+            return [{"x": 160, "y": 105, "width": 120, "height": 50} if target.get("content") == "Search" else None for target in argument]
+        return script
 
     @property
     def locator(self):
@@ -41,7 +47,8 @@ class FakePage:
 
     async def _inner_text(self): return "visible text"
 
-    async def screenshot(self, **kwargs): pass
+    async def screenshot(self, **kwargs):
+        return b"png" if kwargs.get("type") == "png" else None
 
     async def close(self): self.closed = True
 
@@ -76,10 +83,12 @@ class FakeRuntime:
     async def browser_close_tab(self, **arguments): return arguments
     async def browser_navigate(self, **arguments): return arguments
     async def browser_click(self, **arguments): return arguments
+    async def browser_click_point(self, **arguments): return arguments
     async def browser_type(self, **arguments): return arguments
     async def browser_evaluate(self, **arguments): return arguments
     async def browser_snapshot(self, **arguments): return arguments
     async def browser_screenshot(self, **arguments): return arguments
+    async def browser_understand(self, **arguments): return arguments
     async def browser_get_cookies(self, **arguments): return arguments
     async def browser_set_cookies(self, **arguments): return arguments
 
@@ -159,6 +168,34 @@ class RuntimeTests(unittest.TestCase):
         page = session.tabs[start["active_tab_id"]]
         asyncio.run(runtime.browser_click(start["session_id"], "button", human_config={"click_delay": 1}))
         self.assertEqual(page.click_calls, [("button", {"human_config": {"click_delay": 1}})])
+
+    def test_visual_understanding_filters_invalid_coordinates(self):
+        runtime, start, _, _ = self._start_with(FakeContext())
+        runtime._understand_image = unittest.mock.MagicMock(return_value={
+            "summary": "found it",
+            "requires_user_action": False,
+            "targets": [
+                {"label": "search", "content": "Search", "x": 100, "y": 200, "confidence": 0.9},
+                {"label": "offscreen", "x": 2000, "y": 200},
+            ],
+        })
+        result = asyncio.run(runtime.browser_understand(
+            start["session_id"], "locate search", {"base_url": "https://example.test/v1", "model": "vision", "api_style": "chat_completions", "api_key": "secret"},
+        ))
+        self.assertEqual(result["viewport"]["width"], 1280)
+        self.assertEqual(result["targets"], [{"label": "search", "content": "Search", "x": 160, "y": 105, "width": 120, "height": 50, "confidence": 0.9}])
+
+    def test_point_click_requires_current_viewport_coordinates(self):
+        runtime, start, _, _ = self._start_with(FakeContext())
+        session = runtime.sessions[start["session_id"]]
+        page = session.tabs[start["active_tab_id"]]
+        asyncio.run(runtime.browser_click_point(start["session_id"], 20, 30))
+        page.mouse.click.assert_awaited_once_with(20, 30)
+        with self.assertRaisesRegex(ValueError, "inside the current CSS viewport"):
+            asyncio.run(runtime.browser_click_point(start["session_id"], 1280, 30))
+
+    def test_visual_response_parser_accepts_a_python_style_object(self):
+        self.assertEqual(bridge.CloakBrowserRuntime._parse_analysis("{'summary': 'ok', 'targets': []}"), {"summary": "ok", "targets": []})
 
     def test_virtual_display_forces_a_headed_launch_and_is_cleaned_up(self):
         context = FakeContext()

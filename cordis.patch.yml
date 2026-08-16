@@ -3,3 +3,5 @@
       name: dsh-cloakbrowser
       inject:
         - tools
+        - settings
+        - credentials

@@ -6,6 +6,9 @@ import { tools } from '../tools.js'
 
 test('bundle manifest references the patch file', () => {
   assert.equal(packageManifest.dsh.bundle.patch, './cordis.patch.yml')
+  assert.equal(packageManifest.dsh.client.platform, 'web')
+  assert.equal(packageManifest.exports['./client'], './client.js')
+  assert.equal(packageManifest.exports['./package.json'], './package.json')
 })
 
 test('native tool set includes the requested browser capabilities', () => {
@@ -18,10 +21,12 @@ test('native tool set includes the requested browser capabilities', () => {
     'browser_close_tab',
     'browser_navigate',
     'browser_click',
+    'browser_click_point',
     'browser_type',
     'browser_evaluate',
     'browser_snapshot',
     'browser_screenshot',
+    'browser_understand',
     'browser_get_cookies',
     'browser_set_cookies',
   ])
@@ -31,6 +36,8 @@ test('tool schemas expose launch modes and tab-targeted actions', () => {
   const start = tools.find((tool) => tool.name === 'browser_start')
   const click = tools.find((tool) => tool.name === 'browser_click')
   const navigate = tools.find((tool) => tool.name === 'browser_navigate')
+  const understand = tools.find((tool) => tool.name === 'browser_understand')
+  const clickPoint = tools.find((tool) => tool.name === 'browser_click_point')
 
   assert.equal(start.parameters.properties.profile_dir.type, 'string')
   assert.equal(start.parameters.properties.cdp_port.type, 'integer')
@@ -38,4 +45,6 @@ test('tool schemas expose launch modes and tab-targeted actions', () => {
   assert.equal(start.parameters.properties.human_preset.enum.includes('careful'), true)
   assert.equal(click.parameters.properties.human_config.type, 'object')
   assert.equal(navigate.parameters.properties.tab_id.type, 'string')
+  assert.equal(understand.parameters.properties.request.type, 'string')
+  assert.equal(clickPoint.parameters.properties.x.type, 'number')
 })

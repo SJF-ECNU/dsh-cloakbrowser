@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import ast
+import base64
 import json
 import os
 import shutil
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -153,6 +157,19 @@ class CloakBrowserRuntime:
         await page.click(selector, **self._human_action_options(session, human_config))
         return {"ok": True, "session_id": session_id, "tab_id": self._selected_tab_id(session, tab_id)}
 
+    async def browser_click_point(self, session_id: str, x: float, y: float, tab_id: str | None = None) -> dict[str, Any]:
+        session = self._session(session_id)
+        page = self._page(session, tab_id)
+        viewport = await self._viewport(page)
+        if isinstance(x, bool) or isinstance(y, bool) or not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+            raise ValueError("x and y must be finite CSS viewport coordinates")
+        if not all(map(lambda value: value == value and abs(value) != float("inf"), (x, y))):
+            raise ValueError("x and y must be finite CSS viewport coordinates")
+        if not 0 <= x < viewport["width"] or not 0 <= y < viewport["height"]:
+            raise ValueError("point must be inside the current CSS viewport")
+        await page.mouse.click(x, y)
+        return {"ok": True, "session_id": session_id, "tab_id": self._selected_tab_id(session, tab_id), "x": x, "y": y}
+
     async def browser_type(self, session_id: str, selector: str, text: str, tab_id: str | None = None, human_config: dict[str, Any] | None = None) -> dict[str, Any]:
         session = self._session(session_id)
         page = self._page(session, tab_id)
@@ -180,6 +197,27 @@ class CloakBrowserRuntime:
         output.parent.mkdir(parents=True, exist_ok=True)
         await self._page(session, tab).screenshot(path=str(output), full_page=full_page)
         return {"session_id": session_id, "tab_id": tab, "path": str(output)}
+
+    async def browser_understand(self, session_id: str, request: str, vision: dict[str, str], tab_id: str | None = None) -> dict[str, Any]:
+        if not isinstance(request, str) or not request.strip():
+            raise ValueError("request must be a non-empty string")
+        settings = self._vision_settings(vision)
+        session = self._session(session_id)
+        page = self._page(session, tab_id)
+        viewport = await self._viewport(page)
+        image = await page.screenshot(type="png")
+        if not isinstance(image, bytes):
+            raise RuntimeError("browser screenshot did not return PNG bytes")
+        analysis = await asyncio.to_thread(self._understand_image, settings, request, image)
+        analysis = await self._refine_target_coordinates(page, analysis)
+        return {
+            "session_id": session_id,
+            "tab_id": self._selected_tab_id(session, tab_id),
+            "url": page.url,
+            "title": await page.title(),
+            "viewport": viewport,
+            **self._validate_analysis(analysis, viewport),
+        }
 
     async def browser_get_cookies(self, session_id: str) -> dict[str, Any]:
         session = self._session(session_id)
@@ -280,6 +318,171 @@ class CloakBrowserRuntime:
         return {"tab_id": tab_id, "url": page.url, "title": await page.title(), "active": tab_id == session.active_tab_id}
 
     @staticmethod
+    async def _viewport(page: Any) -> dict[str, int]:
+        viewport = await page.evaluate("({ width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio })")
+        if not isinstance(viewport, dict) or not isinstance(viewport.get("width"), (int, float)) or not isinstance(viewport.get("height"), (int, float)):
+            raise RuntimeError("could not read the current CSS viewport")
+        width, height = int(viewport["width"]), int(viewport["height"])
+        if width < 1 or height < 1:
+            raise RuntimeError("current CSS viewport is empty")
+        return {"width": width, "height": height, "device_pixel_ratio": viewport.get("devicePixelRatio")}
+
+    @staticmethod
+    async def _refine_target_coordinates(page: Any, analysis: dict[str, Any]) -> dict[str, Any]:
+        targets = analysis.get("targets") if isinstance(analysis, dict) else None
+        if not isinstance(targets, list) or not targets:
+            return analysis
+        bounds = await page.evaluate(
+            """(visualTargets) => {
+              const normalize = (value) => String(value ?? '').replace(/\\s+/g, ' ').trim().toLowerCase()
+              const elements = [...document.querySelectorAll('a, button, input, select, textarea, [role="button"], [onclick]')]
+                .filter((element) => {
+                  const rect = element.getBoundingClientRect()
+                  const style = getComputedStyle(element)
+                  return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none'
+                })
+              return visualTargets.map((target) => {
+                if (!target || typeof target !== 'object') return null
+                const labels = [target.content, target.label].map(normalize).filter((value) => value.length > 1)
+                let best = null
+                for (const element of elements) {
+                  const text = normalize(element.innerText || element.value || element.getAttribute('aria-label') || element.title)
+                  const score = labels.reduce((highest, label) => Math.max(highest, text === label ? 2 : 0), 0)
+                  if (score === 0 || (best && best.score >= score)) continue
+                  best = { score, element }
+                }
+                if (!best) return null
+                const rect = best.element.getBoundingClientRect()
+                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height }
+              })
+            }""",
+            targets,
+        )
+        if not isinstance(bounds, list):
+            return analysis
+        refined = []
+        for target, bound in zip(targets, bounds):
+            if not isinstance(target, dict) or not isinstance(bound, dict):
+                refined.append(target)
+                continue
+            if not all(isinstance(bound.get(key), (int, float)) for key in ("x", "y", "width", "height")):
+                refined.append(target)
+                continue
+            refined.append({**target, **bound})
+        return {**analysis, "targets": refined}
+
+    @staticmethod
+    def _vision_settings(vision: dict[str, str]) -> dict[str, str]:
+        if not isinstance(vision, dict):
+            raise ValueError("visual model settings are unavailable")
+        settings = {key: vision.get(key, "") for key in ("base_url", "model", "api_style", "api_key")}
+        if not all(isinstance(value, str) and value.strip() for key, value in settings.items() if key != "api_style"):
+            raise ValueError("visual model Base URL, model, and API key must be configured")
+        if settings["api_style"] not in {"chat_completions", "responses"}:
+            raise ValueError("visual model API style must be chat_completions or responses")
+        return settings
+
+    def _understand_image(self, settings: dict[str, str], request: str, image: bytes) -> dict[str, Any]:
+        image_url = "data:image/png;base64," + base64.b64encode(image).decode("ascii")
+        prompt = (
+            "Analyze this current browser viewport for the requested task. Return exactly one JSON object, with no markdown, "
+            "using {summary:string, requires_user_action:boolean, targets:[{label:string, content:string, x:number, y:number, "
+            "width:number, height:number, confidence:number}]}. x and y are the CSS viewport pixel coordinate at the actionable "
+            "target's center. Only include visible targets relevant to the request. If a CAPTCHA, human verification, or login challenge "
+            "is visible, set requires_user_action to true and do not solve it, infer an answer, or suggest a bypass. Request: " + request.strip()
+        )
+        if settings["api_style"] == "chat_completions":
+            payload = {
+                "model": settings["model"],
+                "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": image_url}}]}],
+                "max_tokens": 1000,
+            }
+            response = self._post_json(settings, "/chat/completions", payload)
+            try:
+                content = response["choices"][0]["message"]["content"]
+            except (KeyError, IndexError, TypeError) as exc:
+                raise RuntimeError("visual model returned no Chat Completions content") from exc
+        else:
+            payload = {
+                "model": settings["model"],
+                "input": [{"role": "user", "content": [{"type": "input_text", "text": prompt}, {"type": "input_image", "image_url": image_url}]}],
+                "max_output_tokens": 1000,
+            }
+            response = self._post_json(settings, "/responses", payload)
+            content = response.get("output_text")
+            if not isinstance(content, str):
+                content = "".join(part.get("text", "") for output in response.get("output", []) for part in output.get("content", []) if isinstance(part, dict))
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("visual model returned no text content")
+        return self._parse_analysis(content)
+
+    @staticmethod
+    def _parse_analysis(content: str) -> dict[str, Any]:
+        candidate = content.strip().removeprefix("```json").removesuffix("```").strip()
+        if "{" in candidate and "}" in candidate:
+            candidate = candidate[candidate.find("{"):candidate.rfind("}") + 1]
+        try:
+            result = json.loads(candidate)
+        except json.JSONDecodeError:
+            try:
+                result = ast.literal_eval(candidate)
+            except (SyntaxError, ValueError) as exc:
+                raise RuntimeError("visual model did not return the requested JSON object") from exc
+        if not isinstance(result, dict):
+            raise RuntimeError("visual model analysis must be a JSON object")
+        return result
+
+    @staticmethod
+    def _post_json(settings: dict[str, str], path: str, payload: dict[str, Any]) -> dict[str, Any]:
+        url = settings["base_url"].rstrip("/") + path
+        request = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers={"Authorization": f"Bearer {settings['api_key']}", "Content-Type": "application/json"}, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                body = response.read()
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:500]
+            raise RuntimeError(f"visual model request failed with HTTP {exc.code}: {detail}") from exc
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"visual model request failed: {exc.reason}") from exc
+        try:
+            decoded = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("visual model returned invalid JSON") from exc
+        if not isinstance(decoded, dict):
+            raise RuntimeError("visual model returned an invalid response object")
+        return decoded
+
+    @staticmethod
+    def _validate_analysis(analysis: dict[str, Any], viewport: dict[str, int]) -> dict[str, Any]:
+        if not isinstance(analysis, dict):
+            raise RuntimeError("visual model analysis must be a JSON object")
+        targets = []
+        for target in analysis.get("targets", []):
+            if not isinstance(target, dict):
+                continue
+            x, y = target.get("x"), target.get("y")
+            if isinstance(x, bool) or isinstance(y, bool) or not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+                continue
+            if not 0 <= x < viewport["width"] or not 0 <= y < viewport["height"]:
+                continue
+            targets.append({
+                "label": str(target.get("label", "target"))[:240],
+                "content": str(target.get("content", ""))[:1000],
+                "x": x,
+                "y": y,
+                "width": target.get("width") if isinstance(target.get("width"), (int, float)) else None,
+                "height": target.get("height") if isinstance(target.get("height"), (int, float)) else None,
+                "confidence": target.get("confidence") if isinstance(target.get("confidence"), (int, float)) else None,
+            })
+            if len(targets) == 20:
+                break
+        return {
+            "summary": str(analysis.get("summary", ""))[:2000],
+            "requires_user_action": analysis.get("requires_user_action") is True,
+            "targets": targets,
+        }
+
+    @staticmethod
     def _human_action_options(session: BrowserSession, human_config: dict[str, Any] | None) -> dict[str, Any]:
         if human_config is None:
             return {}
@@ -300,10 +503,12 @@ class Dispatcher:
             "browser_close_tab": runtime.browser_close_tab,
             "browser_navigate": runtime.browser_navigate,
             "browser_click": runtime.browser_click,
+            "browser_click_point": runtime.browser_click_point,
             "browser_type": runtime.browser_type,
             "browser_evaluate": runtime.browser_evaluate,
             "browser_snapshot": runtime.browser_snapshot,
             "browser_screenshot": runtime.browser_screenshot,
+            "browser_understand": runtime.browser_understand,
             "browser_get_cookies": runtime.browser_get_cookies,
             "browser_set_cookies": runtime.browser_set_cookies,
         }

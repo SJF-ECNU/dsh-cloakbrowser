@@ -37,10 +37,20 @@ export const tools = [
   { name: 'browser_close_tab', description: 'Close a session tab.', parameters: tabParameters() },
   { name: 'browser_navigate', description: 'Navigate the selected or active tab to a URL.', parameters: pageParameters({ url: requiredString }, ['url']) },
   { name: 'browser_click', description: 'Click an element in the selected or active tab.', parameters: pageParameters({ selector: requiredString, human_config: humanConfig }, ['selector']) },
+  {
+    name: 'browser_click_point',
+    description: 'Click CSS viewport coordinates in the selected or active tab. Use coordinates returned by browser_understand.',
+    parameters: pageParameters({ x: { type: 'number' }, y: { type: 'number' } }, ['x', 'y']),
+  },
   { name: 'browser_type', description: 'Type text in an element in the selected or active tab.', parameters: pageParameters({ selector: requiredString, text: requiredString, human_config: humanConfig }, ['selector', 'text']) },
   { name: 'browser_evaluate', description: 'Evaluate JavaScript in the selected or active tab.', parameters: pageParameters({ script: requiredString }, ['script']) },
   { name: 'browser_snapshot', description: 'Read URL, title, and visible page text from the selected or active tab.', parameters: pageParameters() },
   { name: 'browser_screenshot', description: 'Capture a PNG screenshot from the selected or active tab.', parameters: pageParameters({ full_page: { type: 'boolean' } }) },
+  {
+    name: 'browser_understand',
+    description: 'Use the user-configured visual model to locate or read visible page content. Returns CSS viewport coordinates; it identifies CAPTCHA challenges for user handoff and does not solve them.',
+    parameters: pageParameters({ request: requiredString }, ['request']),
+  },
   { name: 'browser_get_cookies', description: 'Read cookies for a browser session.', parameters: sessionParameters() },
   {
     name: 'browser_set_cookies',
