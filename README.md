@@ -16,7 +16,7 @@ You install CloakBrowser separately through CloakHQ's official flow. This reposi
 
 ```bash
 python3 -m pip install 'cloakbrowser>=0.4,<1' playwright
-python3 -m playwright install chromium
+python3 -m cloakbrowser install
 ```
 
 Set `CLOAKBROWSER_DSH_PYTHON` when the required Python interpreter is not `python3`.

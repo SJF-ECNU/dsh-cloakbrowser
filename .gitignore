@@ -2,3 +2,5 @@ __pycache__/
 *.py[cod]
 node_modules/
 *.tgz
+.codex/
+openspec/
