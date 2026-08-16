@@ -185,6 +185,25 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(result["viewport"]["width"], 1280)
         self.assertEqual(result["targets"], [{"label": "search", "content": "Search", "x": 160, "y": 105, "width": 120, "height": 50, "confidence": 0.9}])
 
+    def test_visual_understanding_returns_page_and_image_content_without_targets(self):
+        runtime, start, _, _ = self._start_with(FakeContext())
+        runtime._understand_image = unittest.mock.MagicMock(return_value={
+            "summary": "A product landing page",
+            "page_description": "A red jacket fills the left side, with product details and a blue purchase button on the right.",
+            "images": [
+                {"description": "Studio product photo of a red jacket", "x": 280, "y": 240, "width": 360, "height": 400, "confidence": 0.94},
+                {"description": "Offscreen image", "x": 1400, "y": 10},
+            ],
+            "requires_user_action": False,
+            "targets": [],
+        })
+        result = asyncio.run(runtime.browser_understand(
+            start["session_id"], "Describe the page and its images", {"base_url": "https://example.test/v1", "model": "vision", "api_style": "chat_completions", "api_key": "secret"},
+        ))
+        self.assertEqual(result["page_description"], "A red jacket fills the left side, with product details and a blue purchase button on the right.")
+        self.assertEqual(result["images"], [{"description": "Studio product photo of a red jacket", "x": 280, "y": 240, "width": 360, "height": 400, "confidence": 0.94}, {"description": "Offscreen image"}])
+        self.assertEqual(result["targets"], [])
+
     def test_point_click_requires_current_viewport_coordinates(self):
         runtime, start, _, _ = self._start_with(FakeContext())
         session = runtime.sessions[start["session_id"]]
@@ -196,6 +215,15 @@ class RuntimeTests(unittest.TestCase):
 
     def test_visual_response_parser_accepts_a_python_style_object(self):
         self.assertEqual(bridge.CloakBrowserRuntime._parse_analysis("{'summary': 'ok', 'targets': []}"), {"summary": "ok", "targets": []})
+
+    def test_visual_response_parser_preserves_content_only_response(self):
+        self.assertEqual(bridge.CloakBrowserRuntime._parse_analysis("A page with a red jacket image."), {
+            "summary": "A page with a red jacket image.",
+            "page_description": "A page with a red jacket image.",
+            "images": [],
+            "requires_user_action": False,
+            "targets": [],
+        })
 
     def test_virtual_display_forces_a_headed_launch_and_is_cleaned_up(self):
         context = FakeContext()

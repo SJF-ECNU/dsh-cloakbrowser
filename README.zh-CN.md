@@ -117,7 +117,7 @@ python3 -m cloakbrowser install
 
 在 DSH 中打开 **设置 → 插件 → 插件配置 → 视觉理解模型**。填写 OpenAI 兼容 API 的 Base URL（包含版本路径）、支持图片输入的模型名称，选择 **Chat Completions** 或 **Responses**，再填写 API Key。Base URL、模型和 API 形式作为普通 DSH 设置保存；API Key 通过 DSH 的只写凭据存储保存，之后不会再次显示。
 
-`browser_understand` 是显式工具：只有智能体判断确实需要视觉定位时才调用。它会把所选标签页的当前视口截图发送给你配置的端点，返回摘要和 CSS 视口坐标。用这些坐标调用 `browser_click_point`；普通 DOM 操作仍应优先使用选择器。该工具不会解答 CAPTCHA 或绕过人机验证，只会报告需要用户操作。
+`browser_understand` 是显式工具：只有智能体判断确实需要视觉理解时才调用。它会把所选标签页的当前视口截图发送给你配置的端点，返回摘要、页面内容与布局描述，以及相关可见图片或图形的观察结果。请求定位或操作元素时，它还会返回 CSS 视口坐标；用这些坐标调用 `browser_click_point`。普通 DOM 操作仍应优先使用选择器。该工具不会解答 CAPTCHA 或绕过人机验证，只会报告需要用户操作。
 
 ## 安全提示
 

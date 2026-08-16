@@ -385,11 +385,15 @@ class CloakBrowserRuntime:
     def _understand_image(self, settings: dict[str, str], request: str, image: bytes) -> dict[str, Any]:
         image_url = "data:image/png;base64," + base64.b64encode(image).decode("ascii")
         prompt = (
-            "Analyze this current browser viewport for the requested task. Return exactly one JSON object, with no markdown, "
-            "using {summary:string, requires_user_action:boolean, targets:[{label:string, content:string, x:number, y:number, "
-            "width:number, height:number, confidence:number}]}. x and y are the CSS viewport pixel coordinate at the actionable "
-            "target's center. Only include visible targets relevant to the request. If a CAPTCHA, human verification, or login challenge "
-            "is visible, set requires_user_action to true and do not solve it, infer an answer, or suggest a bypass. Request: " + request.strip()
+            "Analyze this current browser viewport for the requested task. Return exactly one JSON object, with no markdown, using "
+            "{summary:string, page_description:string, images:[{description:string, x?:number, y?:number, width?:number, "
+            "height?:number, confidence?:number}], requires_user_action:boolean, targets:[{label:string, content:string, x:number, "
+            "y:number, width:number, height:number, confidence:number}]}. Always include summary, page_description, images, "
+            "requires_user_action, and targets. Use page_description to explain the visible page content and layout. Use images for "
+            "relevant visible pictures, graphics, or visual regions; coordinates are optional unless the request needs their position. "
+            "Only include actionable visible targets when the request asks to find or operate something. x and y are CSS viewport pixel "
+            "coordinates at the center of a target or image. If a CAPTCHA, human verification, or login challenge is visible, set "
+            "requires_user_action to true and do not solve it, infer an answer, or suggest a bypass. Request: " + request.strip()
         )
         if settings["api_style"] == "chat_completions":
             payload = {
@@ -426,8 +430,14 @@ class CloakBrowserRuntime:
         except json.JSONDecodeError:
             try:
                 result = ast.literal_eval(candidate)
-            except (SyntaxError, ValueError) as exc:
-                raise RuntimeError("visual model did not return the requested JSON object") from exc
+            except (SyntaxError, ValueError):
+                return {
+                    "summary": content.strip(),
+                    "page_description": content.strip(),
+                    "images": [],
+                    "requires_user_action": False,
+                    "targets": [],
+                }
         if not isinstance(result, dict):
             raise RuntimeError("visual model analysis must be a JSON object")
         return result
@@ -456,6 +466,28 @@ class CloakBrowserRuntime:
     def _validate_analysis(analysis: dict[str, Any], viewport: dict[str, int]) -> dict[str, Any]:
         if not isinstance(analysis, dict):
             raise RuntimeError("visual model analysis must be a JSON object")
+        images = []
+        for image in analysis.get("images", []):
+            if not isinstance(image, dict):
+                continue
+            observation = {"description": str(image.get("description", ""))[:2000]}
+            x, y = image.get("x"), image.get("y")
+            if (
+                not isinstance(x, bool)
+                and not isinstance(y, bool)
+                and isinstance(x, (int, float))
+                and isinstance(y, (int, float))
+                and 0 <= x < viewport["width"]
+                and 0 <= y < viewport["height"]
+            ):
+                observation["x"] = x
+                observation["y"] = y
+                observation["width"] = image.get("width") if isinstance(image.get("width"), (int, float)) and not isinstance(image.get("width"), bool) else None
+                observation["height"] = image.get("height") if isinstance(image.get("height"), (int, float)) and not isinstance(image.get("height"), bool) else None
+                observation["confidence"] = image.get("confidence") if isinstance(image.get("confidence"), (int, float)) and not isinstance(image.get("confidence"), bool) else None
+            images.append(observation)
+            if len(images) == 20:
+                break
         targets = []
         for target in analysis.get("targets", []):
             if not isinstance(target, dict):
@@ -478,6 +510,8 @@ class CloakBrowserRuntime:
                 break
         return {
             "summary": str(analysis.get("summary", ""))[:2000],
+            "page_description": str(analysis.get("page_description", analysis.get("summary", "")))[:4000],
+            "images": images,
             "requires_user_action": analysis.get("requires_user_action") is True,
             "targets": targets,
         }

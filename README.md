@@ -117,7 +117,7 @@ Set `humanize: true` and optionally `human_preset: "careful"` or a native `human
 
 In DSH, open **Settings → Plugins → Plugin configuration → Visual understanding model**. Enter an OpenAI-compatible API Base URL (including its version path), an image-capable model name, choose **Chat Completions** or **Responses**, and enter the API key. The Base URL, model, and API style are normal DSH settings; the API key is stored through DSH's write-only credentials store and is never displayed again.
 
-`browser_understand` is deliberately explicit: the agent calls it only when visual grounding is needed. It sends the selected tab's current viewport screenshot to the endpoint you configured and returns a summary plus CSS viewport coordinates. Use those coordinates with `browser_click_point`; normal DOM actions should continue to use selectors. The tool does not solve CAPTCHA or human-verification challenges: it reports that user action is needed.
+`browser_understand` is deliberately explicit: the agent calls it only when visual grounding is needed. It sends the selected tab's current viewport screenshot to the endpoint you configured and returns a summary, a page-content and layout description, and observations of relevant visible images or graphics. A locating request additionally returns CSS viewport coordinates for actionable targets; use those with `browser_click_point`. Normal DOM actions should continue to use selectors. The tool does not solve CAPTCHA or human-verification challenges: it reports that user action is needed.
 
 ## Security
 

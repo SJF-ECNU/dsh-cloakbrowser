@@ -48,7 +48,7 @@ export const tools = [
   { name: 'browser_screenshot', description: 'Capture a PNG screenshot from the selected or active tab.', parameters: pageParameters({ full_page: { type: 'boolean' } }) },
   {
     name: 'browser_understand',
-    description: 'Use the user-configured visual model to locate or read visible page content. Returns CSS viewport coordinates; it identifies CAPTCHA challenges for user handoff and does not solve them.',
+    description: 'Use the user-configured visual model to understand visible page content, layout, and images, or locate actionable elements. Content requests return a description and image observations; locating requests also return CSS viewport coordinates. It identifies CAPTCHA challenges for user handoff and does not solve them.',
     parameters: pageParameters({ request: requiredString }, ['request']),
   },
   { name: 'browser_get_cookies', description: 'Read cookies for a browser session.', parameters: sessionParameters() },
