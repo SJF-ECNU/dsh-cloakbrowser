@@ -95,11 +95,24 @@ python3 -m cloakbrowser install
 ## 工具
 
 - `browser_start`、`browser_close`
+- `browser_open_tab`、`browser_list_tabs`、`browser_activate_tab`、`browser_close_tab`
 - `browser_navigate`、`browser_click`、`browser_type`、`browser_evaluate`
 - `browser_snapshot`、`browser_screenshot`
 - `browser_get_cookies`、`browser_set_cookies`
 
 会话仅存在于一个运行中的 DSH 进程内。Python worker 是私有子进程：它直接导入 `cloakbrowser`、持有浏览器上下文，并通过继承的标准输入输出与插件通信。
+
+### 标签页、profile、CDP、虚拟显示与拟人化操作
+
+`browser_start` 会返回 `active_tab_id` 和初始标签页列表。使用标签页工具创建或切换标签页；页面工具可传入 `tab_id` 操作后台标签页，省略时操作当前活动标签页。
+
+向 `browser_start` 传入 `profile_dir` 会使用 CloakBrowser 原生持久 context。该目录归调用方所有；重复使用即可保留 Cookie 和存储数据，请勿让不可信智能体指向含有凭据的 profile。
+
+传入 `cdp_port` 会暴露 `http://127.0.0.1:<port>`。插件始终将 CDP 绑定到回环地址，因此本机 Playwright/CDP 客户端可以接入，而不会把浏览器控制权限暴露到网络。
+
+在 Linux 上，传入 `virtual_display: { width, height }` 会在私有 Xvfb 显示器上以有头模式运行浏览器。Xvfb 必须已安装并在 `PATH` 中；插件不会安装系统软件包，并会在会话关闭时停止它启动的 Xvfb 子进程。
+
+启动会话时设置 `humanize: true`，并可选传 `human_preset: "careful"` 或原生 `human_config`。`browser_click` 和 `browser_type` 也接受单次操作的 `human_config` 覆盖；未以 `humanize: true` 启动的会话会明确拒绝该覆盖。
 
 ## 发布
 
@@ -123,7 +136,8 @@ npm publish --access public
 
 浏览器工具可以访问目标网站的登录状态、Cookie，以及传给 CloakBrowser 的本地 profile。请只安装可信插件，在批准浏览器操作前审查请求；除非操作确有需要，不要把凭据放进工具参数。
 
-## 已知限制与后续工作
+## 已知限制
 
-- 首个版本只覆盖单页面会话流程；多标签页、持久 profile、CDP 接入、虚拟显示和单操作 humanized 行为暂不包含。
+- CDP 仅暴露由本插件启动的会话；暂不支持让 bridge 附着到任意既有 CDP endpoint。
+- 虚拟显示需要 Linux 和预先安装的 Xvfb；它不是自动依赖安装器，也不是远程桌面服务。
 - 插件依赖本地 Python CloakBrowser 安装，不会自动安装 Python 包或浏览器二进制。

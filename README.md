@@ -95,11 +95,24 @@ Set `CLOAKBROWSER_DSH_PYTHON` when the required Python interpreter is not `pytho
 ## Tools
 
 - `browser_start`, `browser_close`
+- `browser_open_tab`, `browser_list_tabs`, `browser_activate_tab`, `browser_close_tab`
 - `browser_navigate`, `browser_click`, `browser_type`, `browser_evaluate`
 - `browser_snapshot`, `browser_screenshot`
 - `browser_get_cookies`, `browser_set_cookies`
 
 Sessions are local to one running DSH process. The Python worker is a private child process that imports `cloakbrowser` directly, owns browser contexts, and communicates only through inherited stdio.
+
+### Tabs, profiles, CDP, virtual display, and humanized actions
+
+`browser_start` returns an `active_tab_id` and the initial tab list. Open or select tabs with the tab tools; pass `tab_id` to page tools to target a background tab, or omit it to use the active tab.
+
+Pass `profile_dir` to `browser_start` to use CloakBrowser's native persistent context. The folder is caller-owned: reuse it for persistent cookies and storage, and do not point an untrusted agent at a profile containing credentials.
+
+Pass `cdp_port` to expose the session at `http://127.0.0.1:<port>`. The plugin always binds CDP to loopback, so other local Playwright/CDP clients can attach without exposing browser control to the network.
+
+On Linux, pass `virtual_display: { width, height }` to launch a headed browser on a private Xvfb display. Xvfb must already be installed and available on `PATH`; the plugin does not install system packages and stops the Xvfb child when the session closes.
+
+Set `humanize: true` and optionally `human_preset: "careful"` or a native `human_config` when starting a session. `browser_click` and `browser_type` accept `human_config` for an individual native action override; this override is rejected unless the session was started with `humanize: true`.
 
 ## Publish
 
@@ -123,7 +136,8 @@ npm publish --access public
 
 Browser tools can access the target site's authenticated state, cookies, and any local profile passed to CloakBrowser. Install only a trusted bundle, review requests before approving browser actions, and do not put credentials into tool arguments unless the action requires them.
 
-## Known Limitations and Deferred Work
+## Known Limitations
 
-- This first release exposes the core single-page session workflow only; tabs, persistent profiles, CDP attachment, virtual display, and humanized per-action operations are intentionally deferred.
+- CDP support exposes a session started by this plugin; attaching the bridge to an arbitrary existing CDP endpoint is not implemented.
+- Virtual display support requires Linux and a pre-installed Xvfb. It is not an automatic dependency installer or a remote desktop service.
 - The plugin relies on the local Python CloakBrowser installation. It does not install Python packages or browser binaries automatically.

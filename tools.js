@@ -1,4 +1,5 @@
 const requiredString = { type: 'string' }
+const humanConfig = { type: 'object', additionalProperties: true }
 
 export const tools = [
   {
@@ -12,23 +13,34 @@ export const tools = [
         locale: { type: 'string' },
         timezone: { type: 'string' },
         user_agent: { type: 'string' },
-        viewport: {
+        viewport: viewportSchema(),
+        profile_dir: { type: 'string', description: 'Persistent CloakBrowser profile directory.' },
+        cdp_port: { type: 'integer', minimum: 1, maximum: 65535, description: 'Expose CDP on this loopback-only port.' },
+        virtual_display: {
           type: 'object',
-          properties: { width: { type: 'integer' }, height: { type: 'integer' } },
+          properties: { width: { type: 'integer', minimum: 1 }, height: { type: 'integer', minimum: 1 } },
+          required: ['width', 'height'],
           additionalProperties: false,
+          description: 'Start a private Linux Xvfb display and run headed.',
         },
         humanize: { type: 'boolean' },
+        human_preset: { type: 'string', enum: ['default', 'careful'] },
+        human_config: humanConfig,
       },
       additionalProperties: false,
     },
   },
   { name: 'browser_close', description: 'Close a browser session.', parameters: sessionParameters() },
-  { name: 'browser_navigate', description: 'Navigate the active page to a URL.', parameters: sessionParameters({ url: requiredString }, ['url']) },
-  { name: 'browser_click', description: 'Click an element by CSS selector.', parameters: sessionParameters({ selector: requiredString }, ['selector']) },
-  { name: 'browser_type', description: 'Type text into an element by CSS selector.', parameters: sessionParameters({ selector: requiredString, text: requiredString }, ['selector', 'text']) },
-  { name: 'browser_evaluate', description: 'Evaluate JavaScript in the active page.', parameters: sessionParameters({ script: requiredString }, ['script']) },
-  { name: 'browser_snapshot', description: 'Read URL, title, and visible page text.', parameters: sessionParameters() },
-  { name: 'browser_screenshot', description: 'Capture a PNG screenshot and return its path.', parameters: sessionParameters({ full_page: { type: 'boolean' } }) },
+  { name: 'browser_open_tab', description: 'Open a new tab and make it active.', parameters: sessionParameters({ url: requiredString }) },
+  { name: 'browser_list_tabs', description: 'List the tabs in a browser session.', parameters: sessionParameters() },
+  { name: 'browser_activate_tab', description: 'Make a session tab active.', parameters: tabParameters() },
+  { name: 'browser_close_tab', description: 'Close a session tab.', parameters: tabParameters() },
+  { name: 'browser_navigate', description: 'Navigate the selected or active tab to a URL.', parameters: pageParameters({ url: requiredString }, ['url']) },
+  { name: 'browser_click', description: 'Click an element in the selected or active tab.', parameters: pageParameters({ selector: requiredString, human_config: humanConfig }, ['selector']) },
+  { name: 'browser_type', description: 'Type text in an element in the selected or active tab.', parameters: pageParameters({ selector: requiredString, text: requiredString, human_config: humanConfig }, ['selector', 'text']) },
+  { name: 'browser_evaluate', description: 'Evaluate JavaScript in the selected or active tab.', parameters: pageParameters({ script: requiredString }, ['script']) },
+  { name: 'browser_snapshot', description: 'Read URL, title, and visible page text from the selected or active tab.', parameters: pageParameters() },
+  { name: 'browser_screenshot', description: 'Capture a PNG screenshot from the selected or active tab.', parameters: pageParameters({ full_page: { type: 'boolean' } }) },
   { name: 'browser_get_cookies', description: 'Read cookies for a browser session.', parameters: sessionParameters() },
   {
     name: 'browser_set_cookies',
@@ -37,6 +49,14 @@ export const tools = [
   },
 ]
 
+function viewportSchema() {
+  return {
+    type: 'object',
+    properties: { width: { type: 'integer' }, height: { type: 'integer' } },
+    additionalProperties: false,
+  }
+}
+
 function sessionParameters(extra = {}, extraRequired = []) {
   return {
     type: 'object',
@@ -44,4 +64,12 @@ function sessionParameters(extra = {}, extraRequired = []) {
     required: ['session_id', ...extraRequired],
     additionalProperties: false,
   }
+}
+
+function pageParameters(extra = {}, extraRequired = []) {
+  return sessionParameters({ tab_id: requiredString, ...extra }, extraRequired)
+}
+
+function tabParameters() {
+  return sessionParameters({ tab_id: requiredString }, ['tab_id'])
 }
