@@ -1,0 +1,5 @@
+- insert:
+    - id: cloakbrowser
+      name: dsh-cloakbrowser
+      inject:
+        - tools

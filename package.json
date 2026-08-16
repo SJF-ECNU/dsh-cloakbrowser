@@ -1,0 +1,38 @@
+{
+  "name": "dsh-cloakbrowser",
+  "version": "0.1.0",
+  "description": "Native CloakBrowser tools for DeepSeek Harness.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "bridge.js",
+    "tools.js",
+    "cordis.patch.yml",
+    "python/bridge.py",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.19"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "pack:check": "npm pack --dry-run"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "cloakbrowser",
+    "browser-automation"
+  ],
+  "license": "MIT"
+}
