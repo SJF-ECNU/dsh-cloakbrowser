@@ -4,9 +4,9 @@
 
 ## CloakBrowser attribution and licensing
 
-This is an independent DSH plugin. [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) is developed and maintained by CloakHQ; this repository is not affiliated with or endorsed by CloakHQ.
+This plugin connects [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) to DeepSeek Harness. CloakBrowser itself is developed and maintained by CloakHQ; this is not an official CloakBrowser plugin.
 
-The CloakBrowser Python wrapper used by this plugin is MIT-licensed. The compiled CloakBrowser Chromium binary is distributed by CloakHQ under its separate [Binary License](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md). This plugin does not include, bundle, redistribute, or modify that binary: users obtain it through CloakHQ's official installation flow and must comply with its terms.
+You install CloakBrowser separately through CloakHQ's official flow. This repository only contains the DSH integration and does not include or redistribute the CloakBrowser browser binary. The Python wrapper is MIT-licensed; the browser binary has its own [Binary License](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md).
 
 ## Prerequisites
 
