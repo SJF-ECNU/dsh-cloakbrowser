@@ -114,24 +114,6 @@ python3 -m cloakbrowser install
 
 启动会话时设置 `humanize: true`，并可选传 `human_preset: "careful"` 或原生 `human_config`。`browser_click` 和 `browser_type` 也接受单次操作的 `human_config` 覆盖；未以 `humanize: true` 启动的会话会明确拒绝该覆盖。
 
-## 发布
-
-该包是 DSH bundle：`package.json` 声明了 `dsh.bundle.patch`，`cordis.patch.yml` 按包名插入插件。仓库发布纯 JavaScript 和 Python 文件，因此通过 Git 安装时不需要执行 `prepare` 构建。
-
-发布前执行：
-
-```bash
-npm test
-python3 test/test_bridge.py
-npm pack --dry-run
-```
-
-确认 tarball 包含 `cordis.patch.yml` 和 `python/bridge.py` 后，发布预构建产物：
-
-```bash
-npm publish --access public
-```
-
 ## 安全提示
 
 浏览器工具可以访问目标网站的登录状态、Cookie，以及传给 CloakBrowser 的本地 profile。请只安装可信插件，在批准浏览器操作前审查请求；除非操作确有需要，不要把凭据放进工具参数。

@@ -114,24 +114,6 @@ On Linux, pass `virtual_display: { width, height }` to launch a headed browser o
 
 Set `humanize: true` and optionally `human_preset: "careful"` or a native `human_config` when starting a session. `browser_click` and `browser_type` accept `human_config` for an individual native action override; this override is rejected unless the session was started with `humanize: true`.
 
-## Publish
-
-The package is a DSH bundle: its `package.json` declares `dsh.bundle.patch`, and `cordis.patch.yml` inserts the plugin by package name. It ships plain JavaScript and Python files, so Git installs do not require a `prepare` build permission.
-
-Before publishing:
-
-```bash
-npm test
-python3 test/test_bridge.py
-npm pack --dry-run
-```
-
-Check that the tarball includes `cordis.patch.yml` and `python/bridge.py`, then publish prebuilt assets:
-
-```bash
-npm publish --access public
-```
-
 ## Security
 
 Browser tools can access the target site's authenticated state, cookies, and any local profile passed to CloakBrowser. Install only a trusted bundle, review requests before approving browser actions, and do not put credentials into tool arguments unless the action requires them.
