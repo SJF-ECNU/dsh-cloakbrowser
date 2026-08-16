@@ -14,6 +14,21 @@ You install CloakBrowser separately through CloakHQ's official flow. This reposi
 
 Requirements: Node.js 22.19 or newer, Python 3.11 or newer, and Git.
 
+### Quick path (macOS/Linux)
+
+For the default setup, run these commands in order. They create the Python environment the plugin detects automatically, install CloakBrowser and its browser binary, add this bundle directly from GitHub, then start DSH:
+
+```bash
+npm install --global @deepseek-ai/dsh pnpm
+python3 -m venv ~/.dsh/venvs/cloakbrowser
+~/.dsh/venvs/cloakbrowser/bin/python -m pip install 'cloakbrowser>=0.4,<1' playwright
+~/.dsh/venvs/cloakbrowser/bin/python -m cloakbrowser install
+dsh plugin --profile web add github:SJF-ECNU/dsh-cloakbrowser
+dsh web
+```
+
+Open the local URL printed by DSH. The numbered steps below explain the same setup, alternatives, and verification.
+
 ### 1. Install DSH and pnpm
 
 ```bash
@@ -57,6 +72,25 @@ dsh --profile web --dump-config | grep -A3 'dsh-cloakbrowser'
 ```
 
 The output should contain the `dsh-cloakbrowser` layer and the `cloakbrowser` plugin row.
+
+### 6. Complete first configuration
+
+**CloakBrowser runtime.** The default commands install into `~/.dsh/venvs/cloakbrowser`, which this plugin uses automatically. To confirm that environment is ready:
+
+```bash
+~/.dsh/venvs/cloakbrowser/bin/python -c "import cloakbrowser; print('CloakBrowser ready')"
+```
+
+If CloakBrowser is installed somewhere else, set the interpreter path in the same shell that starts DSH, then start or restart DSH:
+
+```bash
+export CLOAKBROWSER_DSH_PYTHON=/absolute/path/to/python
+dsh web
+```
+
+**Optional visual model.** In the DSH web UI, open **Settings → Plugins → Plugin configuration → Visual understanding model**. Enter an OpenAI-compatible Base URL including its API version path (for example, one ending in `/v1`), an image-capable model name, select **Chat Completions** or **Responses**, enter the API key, and click **Save**. The API key is write-only: saving is the only time it is displayed or changed.
+
+You can now ask the agent to open a page and describe its layout or images. `browser_understand` is called only when the agent needs visual grounding.
 
 ## Upgrade or remove
 
@@ -115,7 +149,7 @@ Set `humanize: true` and optionally `human_preset: "careful"` or a native `human
 
 ### Visual understanding
 
-In DSH, open **Settings → Plugins → Plugin configuration → Visual understanding model**. Enter an OpenAI-compatible API Base URL (including its version path), an image-capable model name, choose **Chat Completions** or **Responses**, and enter the API key. The Base URL, model, and API style are normal DSH settings; the API key is stored through DSH's write-only credentials store and is never displayed again.
+Configure the optional model during **Install from GitHub → Complete first configuration**. The Base URL, model, and API style are normal DSH settings; the API key is stored through DSH's write-only credentials store and is never displayed again.
 
 `browser_understand` is deliberately explicit: the agent calls it only when visual grounding is needed. It sends the selected tab's current viewport screenshot to the endpoint you configured and returns a summary, a page-content and layout description, and observations of relevant visible images or graphics. A locating request additionally returns CSS viewport coordinates for actionable targets; use those with `browser_click_point`. Normal DOM actions should continue to use selectors. The tool does not solve CAPTCHA or human-verification challenges: it reports that user action is needed.
 

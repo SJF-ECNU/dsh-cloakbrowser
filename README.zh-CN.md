@@ -14,6 +14,21 @@
 
 前提条件：Node.js 22.19 或更新版本、Python 3.11 或更新版本，以及 Git。
 
+### 快速安装（macOS/Linux）
+
+使用默认配置时，按顺序执行以下命令即可：它会创建插件自动识别的 Python 环境，安装 CloakBrowser 及浏览器二进制，从 GitHub 加入插件，然后启动 DSH：
+
+```bash
+npm install --global @deepseek-ai/dsh pnpm
+python3 -m venv ~/.dsh/venvs/cloakbrowser
+~/.dsh/venvs/cloakbrowser/bin/python -m pip install 'cloakbrowser>=0.4,<1' playwright
+~/.dsh/venvs/cloakbrowser/bin/python -m cloakbrowser install
+dsh plugin --profile web add github:SJF-ECNU/dsh-cloakbrowser
+dsh web
+```
+
+打开 DSH 输出的本地地址即可。下面的编号步骤说明相同流程的细节、替代安装方式与验证方法。
+
 ### 1. 安装 DSH 和 pnpm
 
 ```bash
@@ -57,6 +72,25 @@ dsh --profile web --dump-config | grep -A3 'dsh-cloakbrowser'
 ```
 
 输出中应包含 `dsh-cloakbrowser` 层和 `cloakbrowser` 插件条目。
+
+### 6. 完成首次配置
+
+**CloakBrowser 运行环境。** 默认命令会安装到 `~/.dsh/venvs/cloakbrowser`，插件会自动使用它。可用下面的命令确认环境已就绪：
+
+```bash
+~/.dsh/venvs/cloakbrowser/bin/python -c "import cloakbrowser; print('CloakBrowser ready')"
+```
+
+如果 CloakBrowser 安装在其他位置，请在启动 DSH 的同一个终端设置解释器路径，然后启动或重启 DSH：
+
+```bash
+export CLOAKBROWSER_DSH_PYTHON=/absolute/path/to/python
+dsh web
+```
+
+**可选：视觉模型。** 在 DSH Web 中打开 **设置 → 插件 → 插件配置 → 视觉理解模型**。填写包含 API 版本路径的 OpenAI 兼容 Base URL（例如以 `/v1` 结尾）、支持图片输入的模型名称，选择 **Chat Completions** 或 **Responses**，填写 API Key 并点击 **保存**。API Key 是只写的：只有保存或更换时才会输入和写入。
+
+之后即可让智能体打开页面并描述布局或图片；只有确实需要视觉依据时，它才会调用 `browser_understand`。
 
 ## 更新或卸载
 
@@ -115,7 +149,7 @@ python3 -m cloakbrowser install
 
 ### 视觉理解
 
-在 DSH 中打开 **设置 → 插件 → 插件配置 → 视觉理解模型**。填写 OpenAI 兼容 API 的 Base URL（包含版本路径）、支持图片输入的模型名称，选择 **Chat Completions** 或 **Responses**，再填写 API Key。Base URL、模型和 API 形式作为普通 DSH 设置保存；API Key 通过 DSH 的只写凭据存储保存，之后不会再次显示。
+可选模型的配置步骤见 **从 GitHub 安装 → 完成首次配置**。Base URL、模型和 API 形式作为普通 DSH 设置保存；API Key 通过 DSH 的只写凭据存储保存，之后不会再次显示。
 
 `browser_understand` 是显式工具：只有智能体判断确实需要视觉理解时才调用。它会把所选标签页的当前视口截图发送给你配置的端点，返回摘要、页面内容与布局描述，以及相关可见图片或图形的观察结果。请求定位或操作元素时，它还会返回 CSS 视口坐标；用这些坐标调用 `browser_click_point`。普通 DOM 操作仍应优先使用选择器。该工具不会解答 CAPTCHA 或绕过人机验证，只会报告需要用户操作。
 
