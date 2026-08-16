@@ -2,6 +2,12 @@
 
 `dsh-cloakbrowser` is a native [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) bundle that gives an agent local CloakBrowser tools. It does not run, call, or require an MCP server.
 
+## CloakBrowser attribution and licensing
+
+This is an independent DSH plugin. [CloakBrowser](https://github.com/CloakHQ/CloakBrowser) is developed and maintained by CloakHQ; this repository is not affiliated with or endorsed by CloakHQ.
+
+The CloakBrowser Python wrapper used by this plugin is MIT-licensed. The compiled CloakBrowser Chromium binary is distributed by CloakHQ under its separate [Binary License](https://github.com/CloakHQ/CloakBrowser/blob/main/BINARY-LICENSE.md). This plugin does not include, bundle, redistribute, or modify that binary: users obtain it through CloakHQ's official installation flow and must comply with its terms.
+
 ## Prerequisites
 
 - DeepSeek Harness and Node.js 22.19 or newer.
