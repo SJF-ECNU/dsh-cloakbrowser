@@ -1,6 +1,15 @@
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
+
+export function resolveCloakBrowserPython({ env = process.env, home = homedir(), exists = existsSync } = {}) {
+  if (env.CLOAKBROWSER_DSH_PYTHON) return env.CLOAKBROWSER_DSH_PYTHON
+  const managedPython = join(home, '.dsh', 'venvs', 'cloakbrowser', 'bin', 'python')
+  return exists(managedPython) ? managedPython : 'python3'
+}
 
 export class CloakBrowserBridge {
   #child
@@ -43,7 +52,7 @@ export class CloakBrowserBridge {
 
   #start() {
     if (this.#child) return
-    const python = process.env.CLOAKBROWSER_DSH_PYTHON ?? 'python3'
+    const python = resolveCloakBrowserPython()
     const worker = fileURLToPath(new URL('./python/bridge.py', import.meta.url))
     const child = spawn(python, [worker], { stdio: ['pipe', 'pipe', 'ignore'] })
     this.#child = child

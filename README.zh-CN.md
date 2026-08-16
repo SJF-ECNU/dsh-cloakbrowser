@@ -45,11 +45,10 @@ dsh plugin --profile web add github:SJF-ECNU/dsh-cloakbrowser
 ### 4. 启动 DSH
 
 ```bash
-export CLOAKBROWSER_DSH_PYTHON="$HOME/.dsh/venvs/cloakbrowser/bin/python"
 dsh web
 ```
 
-DSH 会输出本地访问地址，在浏览器中打开即可。之后每次启动也需要这个环境变量；如需长期使用，可将它写入 shell 配置文件。
+DSH 会输出本地访问地址，在浏览器中打开即可。若标准的 `~/.dsh/venvs/cloakbrowser/bin/python` 存在，插件会自动使用它；仅当 CloakBrowser 安装在其他 Python 环境时，才需要设置 `CLOAKBROWSER_DSH_PYTHON`。
 
 ### 5. 验证插件已加载
 

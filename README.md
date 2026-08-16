@@ -45,11 +45,10 @@ dsh plugin --profile web add github:SJF-ECNU/dsh-cloakbrowser
 ### 4. Start DSH
 
 ```bash
-export CLOAKBROWSER_DSH_PYTHON="$HOME/.dsh/venvs/cloakbrowser/bin/python"
 dsh web
 ```
 
-DSH prints a local URL; open it in a browser. The environment variable must also be present on later launches. Add it to your shell configuration if you want it to persist.
+DSH prints a local URL; open it in a browser. When `~/.dsh/venvs/cloakbrowser/bin/python` exists, the plugin uses it automatically. Set `CLOAKBROWSER_DSH_PYTHON` only when CloakBrowser is installed in another Python environment.
 
 ### 5. Verify the plugin
 

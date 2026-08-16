@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import packageManifest from '../package.json' with { type: 'json' }
+import { resolveCloakBrowserPython } from '../bridge.js'
 import { tools } from '../tools.js'
 
 test('bundle manifest references the patch file', () => {
@@ -47,4 +48,12 @@ test('tool schemas expose launch modes and tab-targeted actions', () => {
   assert.equal(navigate.parameters.properties.tab_id.type, 'string')
   assert.equal(understand.parameters.properties.request.type, 'string')
   assert.equal(clickPoint.parameters.properties.x.type, 'number')
+})
+
+test('worker prefers the managed CloakBrowser virtual environment', () => {
+  const home = '/Users/tester'
+  const managedPython = `${home}/.dsh/venvs/cloakbrowser/bin/python`
+  assert.equal(resolveCloakBrowserPython({ env: {}, home, exists: (path) => path === managedPython }), managedPython)
+  assert.equal(resolveCloakBrowserPython({ env: { CLOAKBROWSER_DSH_PYTHON: '/custom/python' }, home, exists: () => true }), '/custom/python')
+  assert.equal(resolveCloakBrowserPython({ env: {}, home, exists: () => false }), 'python3')
 })
