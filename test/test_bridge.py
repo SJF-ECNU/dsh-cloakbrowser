@@ -1,5 +1,6 @@
 import asyncio
 import importlib.util
+import json
 import sys
 import types
 import unittest
@@ -215,6 +216,22 @@ class RuntimeTests(unittest.TestCase):
 
     def test_visual_response_parser_accepts_a_python_style_object(self):
         self.assertEqual(bridge.CloakBrowserRuntime._parse_analysis("{'summary': 'ok', 'targets': []}"), {"summary": "ok", "targets": []})
+
+    def test_visual_response_parser_unwraps_a_json_serialized_result(self):
+        serialized = json.dumps(json.dumps({
+            "summary": "A product page",
+            "page_description": "A red jacket is shown beside a purchase button.",
+            "images": [{"description": "Red jacket", "x": 200, "y": 300}],
+            "requires_user_action": False,
+            "targets": [{"label": "Buy", "content": "Buy now", "x": 900, "y": 400}],
+        }))
+        self.assertEqual(bridge.CloakBrowserRuntime._parse_analysis(serialized), {
+            "summary": "A product page",
+            "page_description": "A red jacket is shown beside a purchase button.",
+            "images": [{"description": "Red jacket", "x": 200, "y": 300}],
+            "requires_user_action": False,
+            "targets": [{"label": "Buy", "content": "Buy now", "x": 900, "y": 400}],
+        })
 
     def test_visual_response_parser_preserves_content_only_response(self):
         self.assertEqual(bridge.CloakBrowserRuntime._parse_analysis("A page with a red jacket image."), {

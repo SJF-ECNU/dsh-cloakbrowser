@@ -423,24 +423,36 @@ class CloakBrowserRuntime:
     @staticmethod
     def _parse_analysis(content: str) -> dict[str, Any]:
         candidate = content.strip().removeprefix("```json").removesuffix("```").strip()
+        candidates = [candidate]
         if "{" in candidate and "}" in candidate:
-            candidate = candidate[candidate.find("{"):candidate.rfind("}") + 1]
-        try:
-            result = json.loads(candidate)
-        except json.JSONDecodeError:
+            candidates.append(candidate[candidate.find("{"):candidate.rfind("}") + 1])
+        for candidate in candidates:
             try:
-                result = ast.literal_eval(candidate)
-            except (SyntaxError, ValueError):
-                return {
-                    "summary": content.strip(),
-                    "page_description": content.strip(),
-                    "images": [],
-                    "requires_user_action": False,
-                    "targets": [],
-                }
-        if not isinstance(result, dict):
-            raise RuntimeError("visual model analysis must be a JSON object")
-        return result
+                result = json.loads(candidate)
+            except json.JSONDecodeError:
+                try:
+                    result = ast.literal_eval(candidate)
+                except (SyntaxError, ValueError):
+                    continue
+            for _ in range(2):
+                if isinstance(result, dict):
+                    return result
+                if not isinstance(result, str):
+                    break
+                try:
+                    result = json.loads(result.strip())
+                except json.JSONDecodeError:
+                    try:
+                        result = ast.literal_eval(result.strip())
+                    except (SyntaxError, ValueError):
+                        break
+        return {
+            "summary": content.strip(),
+            "page_description": content.strip(),
+            "images": [],
+            "requires_user_action": False,
+            "targets": [],
+        }
 
     @staticmethod
     def _post_json(settings: dict[str, str], path: str, payload: dict[str, Any]) -> dict[str, Any]:
